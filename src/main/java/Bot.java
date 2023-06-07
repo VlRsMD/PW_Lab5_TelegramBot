@@ -1,15 +1,21 @@
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updates.SetWebhook;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
+import org.telegram.telegrambots.meta.generics.LongPollingBot;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import spark.Spark;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Bot extends TelegramLongPollingBot {
+public class Bot extends TelegramWebhookBot {
 
     public List<String> savedNews = new ArrayList<>();
     final String BOT_USERNAME = "faf201_vladimir_russu_bot";
@@ -25,38 +31,6 @@ public class Bot extends TelegramLongPollingBot {
         return BOT_TOKEN;
     }
 
-    @Override
-    public void onUpdateReceived(Update update) {
-        var msg = update.getMessage();
-        var user = msg.getFrom();
-        var id = user.getId();
-        var txt = msg.getText();
-        if(msg.isCommand()) {
-            if(txt.equals("/start")) {
-                start(id);
-            }
-            if(txt.contains("/latest_news_")) {
-                try {
-                    showLatestNews(id, msg);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            if (txt.contains("/save_news_")) {
-                saveNews(id, msg);
-            }
-            if(txt.equals("/saved_news")) {
-                showSavedNews(id);
-            }
-            if(txt.contains("/navigate_")) {
-                try {
-                    navigateToLink(id, msg);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
 
     private void start(Long id) {
         String greetingMessage = "Hello! I am a Telegram news bot. Proceed with the following commands: " + "\n" +
@@ -144,6 +118,12 @@ public class Bot extends TelegramLongPollingBot {
         sendText(id, messageContent);
     }
 
+    @Override
+    public String getBotPath() {
+        return "https://127.0.0.1:8080";
+    }
+
+
     public void sendText(Long who, String what){
         SendMessage sm = SendMessage.builder()
                 .chatId(who.toString())
@@ -155,10 +135,49 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
+    @Override
+    public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
+        var msg = update.getMessage();
+        var user = msg.getFrom();
+        var id = user.getId();
+        var txt = msg.getText();
+        if(msg.isCommand()) {
+            if(txt.equals("/start")) {
+                start(id);
+            }
+            if(txt.contains("/latest_news_")) {
+                try {
+                    showLatestNews(id, msg);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (txt.contains("/save_news_")) {
+                saveNews(id, msg);
+            }
+            if(txt.equals("/saved_news")) {
+                showSavedNews(id);
+            }
+            if(txt.contains("/navigate_")) {
+                try {
+                    navigateToLink(id, msg);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return null;
+    }
+
     public static void main(String[] args) throws TelegramApiException {
-        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         Bot bot = new Bot();
-        botsApi.registerBot(bot);
-        bot.sendText(978024495L, "Hello!");
+        SetWebhook request = new SetWebhook();
+        String webhookUrl = "https://127.0.0.1:8080";
+        request.setUrl(webhookUrl);
+        try {
+            bot.execute(request);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
     }
 }
